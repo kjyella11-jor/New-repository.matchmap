@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>맽차맵 | 전국 녹차·말차 맛집 지도</title>
+  <meta name="description" content="전국의 녹차 카페, 말차 디저트 전문점을 한눈에 보여주는 지도 기반 추천 및 공유 서비스입니다.">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""/>
+  
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- App Wrapper -->
+  <div class="app-container">
+    
+    <!-- Top Header -->
+    <header class="main-header">
+      <div class="logo-area">
+        <span class="logo-leaf">🌱</span>
+        <h1 class="logo-title">맽차맵 <span class="logo-subtitle">Matcha Map</span></h1>
+      </div>
+      <div class="header-actions">
+        <!-- Geolocation Button -->
+        <button id="gps-btn" class="icon-button header-btn" title="내 위치 찾기">
+          <i data-lucide="map-pin"></i>
+        </button>
+        <!-- Profile / Auth Trigger -->
+        <button id="auth-header-btn" class="btn btn-outline header-btn">
+          <i data-lucide="user"></i>
+          <span class="btn-text">로그인</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Layout -->
+    <main class="main-layout">
+      
+      <!-- Sidebar Control Panel -->
+      <aside class="sidebar" id="sidebar">
+        
+        <!-- Sidebar Navigation Tabs -->
+        <nav class="sidebar-nav">
+          <button class="nav-tab active" data-tab="search" id="tab-search-btn">
+            <i data-lucide="search"></i>
+            <span>맛집 검색</span>
+          </button>
+          <button class="nav-tab" data-tab="favorites" id="tab-favorites-btn">
+            <i data-lucide="heart"></i>
+            <span>나의 목록</span>
+          </button>
+          <button class="nav-tab" data-tab="register" id="tab-register-btn">
+            <i data-lucide="plus-circle"></i>
+            <span>맛집 등록</span>
+          </button>
+          <button class="nav-tab" data-tab="profile" id="tab-profile-btn">
+            <i data-lucide="user-check"></i>
+            <span>마이페이지</span>
+          </button>
+        </nav>
+
+        <!-- Tab Contents Area -->
+        <div class="tab-content-container">
+          
+          <!-- TAB 1: SEARCH & FILTER -->
+          <div class="tab-pane active" id="tab-search">
+            <!-- Region & Name Search Form -->
+            <div class="filter-card">
+              <div class="input-group-row">
+                <div class="select-wrapper">
+                  <select id="region-select">
+                    <option value="">전국 지역</option>
+                    <option value="서울">서울특별시</option>
+                    <option value="경기">경기도</option>
+                    <option value="제주">제주특별자치도</option>
+                    <option value="부산">부산광역시</option>
+                    <option value="강원">강원특별자치도</option>
+                  </select>
+                </div>
+                <div class="input-wrapper search-box">
+                  <i data-lucide="search" class="search-icon"></i>
+                  <input type="text" id="search-input" placeholder="가게명 또는 메뉴 검색...">
+                </div>
+              </div>
+
+              <!-- Keyword Filter Panel (Includes/Excludes) -->
+              <div class="keyword-filter-section">
+                <button class="accordion-toggle" id="keyword-toggle">
+                  <span>키워드 필터링 (선택/제외)</span>
+                  <i data-lucide="chevron-down" class="accordion-arrow"></i>
+                </button>
+                <div class="accordion-content" id="keyword-panel">
+                  <div class="keyword-sub-title">포함할 키워드 (리뷰 비율 높은 순 정렬)</div>
+                  <div class="keyword-tags" id="include-keywords">
+                    <button class="tag-chip" data-keyword="진해요"># 진해요</button>
+                    <button class="tag-chip" data-keyword="쌉싸름해요"># 쌉싸름해요</button>
+                    <button class="tag-chip" data-keyword="달아요"># 달아요</button>
+                    <button class="tag-chip" data-keyword="양이 많아요"># 양이 많아요</button>
+                    <button class="tag-chip" data-keyword="친절해요"># 친절해요</button>
+                  </div>
+                  
+                  <div class="keyword-sub-title margin-top-sm">제외할 키워드 (해당 가게 결과 제외)</div>
+                  <div class="keyword-tags" id="exclude-keywords">
+                    <button class="tag-chip exclude" data-keyword="노키즈존"># 노키즈존</button>
+                    <button class="tag-chip exclude" data-keyword="노펫존"># 노펫존</button>
+                    <button class="tag-chip exclude" data-keyword="양이 적어요"># 양이 적어요</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sorting & Stats Bar -->
+            <div class="list-stats-bar">
+              <span id="results-count">검색 결과 0건</span>
+              <div class="sort-actions">
+                <button id="sort-rating-btn" class="sort-btn active">평점 높은 순</button>
+                <button id="sort-distance-btn" class="sort-btn">가까운 거리 순</button>
+              </div>
+            </div>
+
+            <!-- Results List -->
+            <div class="list-container" id="shop-list-results">
+              <!-- Cards dynamically injected here -->
+            </div>
+          </div>
+
+          <!-- TAB 2: MY LISTS (Favorites & Visit Plans) -->
+          <div class="tab-pane" id="tab-favorites">
+            <!-- Sub tabs inside My Lists -->
+            <div class="sub-tab-nav">
+              <button class="sub-tab active" data-subtab="favs" id="subtab-favs-btn">즐겨찾기 (<span id="favs-count">0</span>)</button>
+              <button class="sub-tab" data-subtab="plans" id="subtab-plans-btn">방문 예정 (<span id="plans-count">0</span>)</button>
+              <button class="sub-tab" data-subtab="history" id="subtab-history-btn">방문 완료 (<span id="history-count">0</span>)</button>
+            </div>
+            
+            <div class="list-container" id="my-list-results">
+              <!-- Dynamically injected user saved lists -->
+            </div>
+          </div>
+
+          <!-- TAB 3: REGISTER NEW SHOP -->
+          <div class="tab-pane" id="tab-register">
+            <div class="form-scroll-container">
+              <div class="form-notice">
+                <p>💡 <strong>지도상 등록 팁:</strong> 오른쪽 지도에서 맛집 위치를 직접 클릭하면 위도와 경도가 자동으로 입력됩니다!</p>
+              </div>
+              
+              <form id="shop-register-form" class="shop-form">
+                <div class="form-group">
+                  <label for="reg-name">상호명 <span class="required">*</span></label>
+                  <input type="text" id="reg-name" required placeholder="가게 이름을 입력하세요">
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-address">주소 <span class="required">*</span></label>
+                  <input type="text" id="reg-address" required placeholder="예: 서울특별시 마포구 서교동 123-45">
+                </div>
+
+                <div class="form-group-row">
+                  <div class="form-group">
+                    <label for="reg-lat">위도 (Latitude) <span class="required">*</span></label>
+                    <input type="number" step="any" id="reg-lat" required placeholder="지도를 클릭해 보세요">
+                  </div>
+                  <div class="form-group">
+                    <label for="reg-lng">경도 (Longitude) <span class="required">*</span></label>
+                    <input type="number" step="any" id="reg-lng" required placeholder="지도를 클릭해 보세요">
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-phone">전화번호 / SNS 연락처</label>
+                  <input type="text" id="reg-phone" placeholder="예: 02-123-4567 또는 @instagram_id">
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-menu">대표 메뉴 (쉼표로 구분) <span class="required">*</span></label>
+                  <input type="text" id="reg-menu" required placeholder="예: 말차 아이스크림, 녹차 플랫화이트">
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-photo">대표 사진 이미지 URL</label>
+                  <input type="url" id="reg-photo" placeholder="예: https://images.unsplash.com/... (또는 공란)">
+                  <div class="url-selector-chips">
+                    <button type="button" class="preset-img-btn" data-url="https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=600">🍵 말차라떼</button>
+                    <button type="button" class="preset-img-btn" data-url="https://images.unsplash.com/photo-1563887556068-9d4b8e17a934?w=600">🍨 말차빙수</button>
+                    <button type="button" class="preset-img-btn" data-url="https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?w=600">🍰 녹차롤케익</button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="reg-desc">가게 소개글 <span class="required">*</span></label>
+                  <textarea id="reg-desc" rows="4" required placeholder="녹차/말차 매니아들이 가야 하는 이유와 가게 분위기를 간단히 작성해 주세요"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full-width">
+                  <i data-lucide="check"></i> 새 녹차 맛집으로 등록하기
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- TAB 4: MY PROFILE / STATS -->
+          <div class="tab-pane" id="tab-profile">
+            <div class="profile-scroll-container">
+              <!-- Logged Out View -->
+              <div id="profile-logged-out" class="profile-card text-center">
+                <div class="avatar-placeholder">🍵</div>
+                <h3>로그인이 필요한 서비스입니다</h3>
+                <p class="profile-desc">로그인하시면 좋아하는 녹차 맛집을 즐겨찾고, 리뷰를 작성하며 나만의 맛집 지도를 관리할 수 있습니다.</p>
+                <button id="profile-login-btn" class="btn btn-primary margin-top-md">간편 로그인하기</button>
+              </div>
+
+              <!-- Logged In View -->
+              <div id="profile-logged-in" class="hidden">
+                <div class="profile-card">
+                  <div class="profile-header-info">
+                    <img id="user-avatar" class="user-avatar" src="" alt="유저 아바타">
+                    <div>
+                      <h3 id="user-nickname">말차러버 1호</h3>
+                      <span id="user-email" class="badge">kakao 사용자</span>
+                    </div>
+                  </div>
+                  
+                  <div class="user-stats-grid">
+                    <div class="stat-box">
+                      <span class="stat-val" id="stat-favorites-count">0</span>
+                      <span class="stat-label">즐겨찾기</span>
+                    </div>
+                    <div class="stat-box">
+                      <span class="stat-val" id="stat-plans-count">0</span>
+                      <span class="stat-label">방문 예정</span>
+                    </div>
+                    <div class="stat-box">
+                      <span class="stat-val" id="stat-reviews-count">0</span>
+                      <span class="stat-label">작성한 리뷰</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Green Tea Lover Rank -->
+                <div class="rank-card">
+                  <div class="rank-icon">🦖</div>
+                  <div>
+                    <h4>내 녹차 매니아 등급</h4>
+                    <p id="user-rank-title" class="rank-title">새끼 공룡급 말차덕후</p>
+                    <div class="progress-bar-container">
+                      <div class="progress-bar" id="user-rank-progress" style="width: 40%"></div>
+                    </div>
+                    <small class="progress-text" id="user-rank-next">다음 등급(공룡 말차대왕)까지 리뷰 3개 남음</small>
+                  </div>
+                </div>
+
+                <div class="action-list">
+                  <button id="profile-logout-btn" class="btn btn-outline btn-full-width">로그아웃</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+        </div>
+      </aside>
+
+      <!-- Sidebar Toggle Floating Trigger (Mobile Only) -->
+      <button class="mobile-sidebar-toggle" id="mobile-sidebar-toggle" title="목록 보기">
+        <i data-lucide="menu"></i>
+      </button>
+
+      <!-- Map Display View Area -->
+      <div id="map" class="map-view-container"></div>
+
+      <!-- Shop Detail Slide-out Drawer Panel -->
+      <div class="shop-detail-panel" id="shop-detail-panel">
+        <button class="panel-close-btn" id="detail-close-btn" title="닫기">
+          <i data-lucide="x"></i>
+        </button>
+        <div class="detail-scroll-content" id="detail-content">
+          <!-- Dynamic details content injected here -->
+        </div>
+      </div>
+      
+    </main>
+  </div>
+
+  <!-- AUTH MODAL (MOCK SIGN IN) -->
+  <div class="modal-overlay" id="auth-modal">
+    <div class="modal-content">
+      <button class="modal-close" id="auth-close-btn"><i data-lucide="x"></i></button>
+      <div class="modal-header">
+        <span class="modal-icon">🌱</span>
+        <h2>맽차맵 간편 시작하기</h2>
+        <p>전국의 녹차/말차 매니아들과 정보를 함께 공유해보세요!</p>
+      </div>
+      <div class="social-login-buttons">
+        <button class="btn-social btn-kakao" id="login-kakao-btn">
+          <span class="social-icon">💬</span>
+          <span>카카오 계정으로 1초 로그인</span>
+        </button>
+        <button class="btn-social btn-naver" id="login-naver-btn">
+          <span class="social-icon">N</span>
+          <span>네이버 계정으로 로그인</span>
+        </button>
+      </div>
+      <div class="modal-footer">
+        <p>로그인 시 맽차맵 이용약관 및 개인정보 처리방침에 동의하는 것으로 간주됩니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- REVIEW MODAL (RATING & WRITING) -->
+  <div class="modal-overlay" id="review-modal">
+    <div class="modal-content width-md">
+      <button class="modal-close" id="review-close-btn"><i data-lucide="x"></i></button>
+      <div class="modal-header">
+        <h2>리뷰 및 평점 작성</h2>
+        <p><span id="review-shop-name" class="highlight">가게이름</span> 방문 소감을 남겨주세요!</p>
+      </div>
+      <form id="review-form" class="review-form">
+        <!-- Stars rating -->
+        <div class="form-group text-center">
+          <label>맽차력 별점 평가 (0.5 단위)</label>
+          <div class="star-rating-container">
+            <div class="star-display-row">
+              <span class="rating-value-num" id="rating-val-display">5.0</span>
+              <div class="stars-interactive" id="stars-row">
+                <!-- Stars will be dynamically output with half-star capabilities -->
+              </div>
+            </div>
+            <input type="range" id="rating-slider" min="0" max="5" step="0.5" value="5.0" class="rating-slider">
+          </div>
+        </div>
+
+        <!-- Keyword selection -->
+        <div class="form-group">
+          <label>이 매장의 녹차/말차 특징 키워드 (중복 선택 가능)</label>
+          <div class="keyword-grid-selection">
+            <label class="kw-checkbox-label">
+              <input type="checkbox" name="review-keywords" value="진해요">
+              <span class="kw-box"># 진해요 🍵</span>
+            </label>
+            <label class="kw-checkbox-label">
+              <input type="checkbox" name="review-keywords" value="쌉싸름해요">
+              <span class="kw-box"># 쌉싸름해요 🌿</span>
+            </label>
+            <label class="kw-checkbox-label">
+              <input type="checkbox" name="review-keywords" value="달아요">
+              <span class="kw-box"># 달아요 🍭</span>
+            </label>
+            <label class="kw-checkbox-label">
+              <input type="checkbox" name="review-keywords" value="양이 많아요">
+              <span class="kw-box"># 양이 많아요 🦖</span>
+            </label>
+            <label class="kw-checkbox-label">
+              <input type="checkbox" name="review-keywords" value="친절해요">
+              <span class="kw-box"># 친절해요 😊</span>
+            </label>
+            <label class="kw-checkbox-label">
+              <input type="checkbox" name="review-keywords" value="노키즈존">
+              <span class="kw-box"># 노키즈존 📵</span>
+            </label>
+            <label class="kw-checkbox-label">
+              <input type="checkbox" name="review-keywords" value="노펫존">
+              <span class="kw-box"># 노펫존 🐕❌</span>
+            </label>
+            <label class="kw-checkbox-label">
+              <input type="checkbox" name="review-keywords" value="양이 적어요">
+              <span class="kw-box"># 양이 적어요 🤏</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="review-photo-url">사진 이미지 URL (선택)</label>
+          <input type="url" id="review-photo-url" placeholder="https://images.unsplash.com/... (또는 공란)">
+        </div>
+
+        <!-- Text comment -->
+        <div class="form-group">
+          <label for="review-text">상세 방문평 (최소 5자 이상)</label>
+          <textarea id="review-text" rows="4" placeholder="말차가 얼마나 진했는지, 디저트의 텍스처는 어땠는지 맛있는 리뷰를 채워주세요!" required></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full-width">
+          리뷰 등록 완료
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- CUSTOM CONFIRMATION MODAL -->
+  <div class="modal-overlay" id="confirm-modal">
+    <div class="modal-content width-sm">
+      <div class="modal-header">
+        <h3 id="confirm-title">정말 취소하시겠습니까?</h3>
+        <p id="confirm-msg">즐겨찾기에서 이 매장을 삭제합니다.</p>
+      </div>
+      <div class="confirm-actions-row">
+        <button id="confirm-cancel-btn" class="btn btn-outline">취소</button>
+        <button id="confirm-ok-btn" class="btn btn-danger">삭제하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+          
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- App Main JavaScript Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
